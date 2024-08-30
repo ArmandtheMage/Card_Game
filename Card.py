@@ -23,6 +23,12 @@ class Card:
             suit = SUITS[self.suit]
             return str(self.value) + suit
         
+    def __eq__(self, value: object) -> bool:
+        if self.value == value.value and self.suit == value.suit:
+            return True
+        else:
+            return False
+        
 class Hand:
     def __init__(self, initial_hand=[], hand_limit:int=-1) -> None:
         self.limit = hand_limit
