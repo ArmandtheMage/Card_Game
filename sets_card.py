@@ -56,7 +56,7 @@ class Set_of_Cards():
         x = ""
         for element in self.cards:
             x += str(element) + ", "
-        return x[: -2]
+        return x[:-2]
     
     def __len__(self) -> int:
         return len(self.cards)
@@ -76,8 +76,7 @@ class Set_of_Cards():
             return item
         except IndexError:
             raise StopIteration
-
-        
+ 
     def __getitem__(self, n):
         if isinstance(n, slice):
             cards2return = Set_of_Cards()
@@ -118,7 +117,6 @@ class Set_of_Cards():
                 are_in = are_in and (obj[n] in self)
                 n += 1
             return are_in
-
 
     # ! Non definire __rsub__, la rimozione non è commutativa
     def __sub__(self, obj: object):
@@ -175,13 +173,38 @@ class Set_of_Cards():
             modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
             0 in maniera randomica
         """
-        card2draw = Set_of_Cards()
-        if len(self) <= number < 0:
+        if 0 < number <= len(self):
+            card2draw = Set_of_Cards([]) # il default gli da problemi
             if mode == 1:
-                pass
+                for i in range(number):
+                    card2draw += self.cards.pop(0)
+            elif mode == 0:
+                card2draw = Set_of_Cards(random.sample(self.cards, number))
+                for card in card2draw:
+                    self.cards.remove(card)
+            elif mode == -1:
+                for i in range(number):
+                    card2draw += self.cards.pop()
+            else:
+                raise ValueError(mode, "Modalità selezionata non gestita")
         else:
             raise IndexError("Provato a pescare più carte di quante ne hai")
+        
+        return card2draw
             
+    def index(self, cards):
+        if cards in self:
+            if isinstance(cards, Card):
+                return self.cards.index(cards)
+            elif isinstance(Set_of_Cards):
+                index = []
+                for card in cards:
+                    index.append(self.cards.index(card))
+            else:
+                raise TypeError("Tipo non riconosciuto")
+        else:
+            raise ValueError(f"{cards} non presenti")
+        
 
 class CardStack(Set_of_Cards):
     """Stack of Cards, make your piles"""
@@ -218,16 +241,15 @@ class CardStack(Set_of_Cards):
         number
             numero di carte da prendere. default 1.
         """
-        if len(self) > number:
-            card2take = Set_of_Cards()
-            for i in range(number): # si potrebbe gestire con lo slicing
-                card2take += self.cards.pop(0)
-        else:
-            raise IndexError("Hai provato a pescare più carte del quante ce ne sono")
-        
-        return card2take
+        #if len(self) > number:
+        #    card2take = Set_of_Cards(self[:number])
+        #else:
+        #    raise IndexError("Hai provato a pescare più carte del quante ce ne sono")
+        #
+        #return card2take
+        return self.draw(number=number, mode=1)
 
-class Hand(Set_of_Cards):
+class Hand(Set_of_Cards): # probabilmente gestita da gioco
     def __init__(self, cards: list = [],
                  hand_limit: int = -1,
                  ) -> None:
@@ -256,6 +278,34 @@ class Hand(Set_of_Cards):
         return cards in self
 
 
+class CardQueue(Set_of_Cards):
+    """Queue of Cards, make your queue"""
+    kind = 2
+
+    def __init__(self, cards: list = [], limit = -1) -> None:
+        """
+        Crea una 'queue' set of cards.
+        cards
+            sono le carte che rappresentano la coda o queue
+        limit
+            determina un limite alle carte che possono essere in questo set
+            -1 non c'è limite
+        """
+        super().__init__(cards, limit)
+        
+    def __sub__(self, obj: object):
+        return super().__sub__(obj)
+
+
+    def take(self, number = 1):
+        """"
+        Prende carte dalle prime aggiunte, quindi le più vecchie e a sx.
+        number
+            numero di carte da prendere. default 1.
+        """
+        return self.draw(number=number, mode=1)
+
+
 if __name__ == "__main__":
     c1 = Card(2, 'Q')
     c2 = Card(4, 'Q')
@@ -265,16 +315,18 @@ if __name__ == "__main__":
     s = Set_of_Cards([c2, c1])
     h = Hand([c1, c2, c3], hand_limit=7)
     p = CardStack([c3, c4])
+    q = CardQueue([c4, c3, c1, c4, c2, c2])
 
     #h.reveal(p)
-    h = h + c4 + s #print(h[:])
+    q += h
+    q += c1
     t = Set_of_Cards()
-    print(f"hand: {h}\ntest: {t}\n\n")
-    t = h[-1 : 0 : -2]
-    print(f"hand: {h}\ntest: {t}\n\n")
-    x = h[1:5]
+    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\n")
+    mode = 0
+    t = q.take(2)
+    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\n")
+    x = q.take(3)
     t = x
-    print(f"hand: {h}\ntest: {t}\n\nx: {x}")
-    print(h[2:])
-
-
+    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\nx: {x}")
+    q -= s
+    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\ns: {s}")
