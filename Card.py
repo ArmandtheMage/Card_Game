@@ -29,6 +29,11 @@ class Card:
         else:
             return False
     
+    # ! da valutare se va bene o se in futuro potrebbe essere utile
+    # settato ad uno per le addizioni nei set
+    def __len__(self):
+        return 1
+    
 if __name__ == "__main__":
     card = Card(2,'P')
     print(card)
