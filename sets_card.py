@@ -21,6 +21,8 @@ class Set_of_Cards():
         self.cards = cards
         # ? limiti 0 come set senza limiti
         self.limit = limit
+        self.loop_index = 0
+        # ? inserire un parametro per la visibilità
 
     # ? Chiamarla is_free_space
     def is_addable(self, obj: object):
@@ -39,7 +41,7 @@ class Set_of_Cards():
     def __add__(self, obj: object):
         if self.is_addable(obj):
             if isinstance(obj, Set_of_Cards):
-                self.cards.extend(obj.cards)
+                self.cards = self.cards + obj.cards
                 return self
             elif isinstance(obj, Card):
                 self.cards.append(obj)
@@ -64,17 +66,46 @@ class Set_of_Cards():
         return TYPES_OF_SETS[self.kind]
 
     def __iter__(self):
+        self.loop_index = 0
         return self
     
     def __next__(self):
-        # ? valutare se è necessario fare una copia delle carte
-        self.cards = self.cards
-        if not self.cards:
+        try:
+            item = self.cards[self.loop_index]
+            self.loop_index += 1
+            return item
+        except IndexError:
             raise StopIteration
-        else:
-            return self.cards.pop(0)
+
         
-    def __getitem__(self, n: int):
+    def __getitem__(self, n):
+        if isinstance(n, slice):
+            cards2return = Set_of_Cards()
+            
+            if n.start == None:
+                sta = 0
+            elif n.start < 0 :
+                sta = len(self) + n.start
+            else:
+                sta = n.start
+
+            if n.stop == None:
+                sto = len(self)
+            elif n.stop < 0:
+                sto = len(self) + n.stop
+            else:
+                sto = n.stop
+
+            if n.step == None:
+                ste = 1
+            else:
+                ste = n.step
+
+            cards2return.cards = []
+            for i in range(sta, sto, ste):
+                item = self.cards[i]
+                cards2return += item
+            return cards2return
         return self.cards[n]
     
     def __contains__(self, obj: object):
@@ -87,6 +118,7 @@ class Set_of_Cards():
                 are_in = are_in and (obj[n] in self)
                 n += 1
             return are_in
+
 
     # ! Non definire __rsub__, la rimozione non è commutativa
     def __sub__(self, obj: object):
@@ -107,6 +139,50 @@ class Set_of_Cards():
             raise IndexError("Non puoi eliminare carte da un set vuoto")
 
 
+    def reveal(self, rand_or_sub = 0):
+        """
+        Rivela carte.
+
+        rand_or_sub
+            Se è un numero positivo rivela quel numero di carte a caso dalla
+            mano. Se è 0 rivela la mano. Se è un 'Set_of_Cards' nel caso sia
+            presente nella mano lo rivela. default = 0
+        """
+        if isinstance(rand_or_sub, int):
+            if rand_or_sub == 0:
+                print(self)
+            elif 0 < rand_or_sub < len(self.cards):
+                card2show = Set_of_Cards(random.sample(self.cards, rand_or_sub))
+                print(card2show)
+            else:
+                raise ValueError("Provato a rivelare un numero non positivo di carte")
+        elif isinstance(rand_or_sub, Set_of_Cards) or isinstance(rand_or_sub, Card):
+            if rand_or_sub in self:
+                print(rand_or_sub)
+            else:
+                # ? raise error
+                print("Carta o set di carte non trovato")
+        else:
+            raise TypeError(f"Provato a rivelare {type(rand_or_sub)} da un {self.__class__.__name__}")
+
+    def draw(self, number = 1, mode:int = 1):
+        """
+        Recupera carte dal set di carte.
+
+        number
+            numero di carte da pescare.
+        mode
+            modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
+            0 in maniera randomica
+        """
+        card2draw = Set_of_Cards()
+        if len(self) <= number < 0:
+            if mode == 1:
+                pass
+        else:
+            raise IndexError("Provato a pescare più carte di quante ne hai")
+            
+
 class CardStack(Set_of_Cards):
     """Stack of Cards, make your piles"""
     kind = 1
@@ -125,8 +201,7 @@ class CardStack(Set_of_Cards):
     def __add__(self, obj: object):
         if self.is_addable(obj):
             if isinstance(obj, Set_of_Cards):
-                obj.cards.extend(self.cards)
-                self.cards = obj.cards
+                self.cards = obj.cards + self.cards
                 return self
             elif isinstance(obj, Card):
                 self.cards.insert(0, obj)
@@ -163,62 +238,22 @@ class Hand(Set_of_Cards):
         super().__init__(cards, hand_limit)
 
 
-    def reveal(self, rand_or_sub: int | Set_of_Cards = 0):
-        if isinstance(rand_or_sub, int) and rand_or_sub == 0 :
-            print(self)
-        
-        elif isinstance(rand_or_sub, int) and\
-                0 < rand_or_sub < len(self.cards):
-            card2show = Set_of_Cards(random.sample(self.cards, rand_or_sub))
-            print(card2show)
-        
-        elif self.is_playable(rand_or_sub):
-            print(rand_or_sub)
-        
-        else:
-            raise TypeError("Provato a rivelare un numero non positivo di carte\
-                            o non un 'Set_of_Cards'")
-
-
-    def old_reveal(self, n_random = -1, subset: Set_of_Cards = Set_of_Cards()):
-        """Reveal cards from the hand
-        
-        n_random
-            -1 ---> show the hand
-            0 ---> show the input 'subset'
-            n > 0 ---> show n random card in the hand
-        subset
-            a 'Set_of_Cards' to show if random is 0
-        """
-
-        if n_random < 0:
-            print(self)
-        
-        elif 0 < n_random < len(self.cards):
-            card2show = Set_of_Cards(random.sample(self.cards, n_random))
-            print(card2show)
-        
-        elif n_random == 0 and self.is_playable(subset):
-            print(subset)
-        
-        else:
-            print("ERROR: ---")
-
-
-    def is_playable(self, cards:Set_of_Cards) -> bool: # sostituita da in
-        is_playable = True
-        n = 0
-
+    def is_playable(self, cards:Set_of_Cards | Card) -> bool: # sostituita da in
+        #is_playable = True
+        #n = 0
+#
         if len(self) < len(cards):
             raise IndexError("Stai giocando troppe carte")
+        #
+        #while(is_playable and n < len(cards)):
+        #    if cards[n] in self.cards:
+        #        n += 1
+        #    else:
+        #        is_playable = False
+        #
+        #return is_playable
         
-        while(is_playable and n < len(cards)):
-            if cards[n] in self.cards:
-                n += 1
-            else:
-                is_playable = False
-        
-        return is_playable
+        return cards in self
 
 
 if __name__ == "__main__":
@@ -231,11 +266,15 @@ if __name__ == "__main__":
     h = Hand([c1, c2, c3], hand_limit=7)
     p = CardStack([c3, c4])
 
-    print(p)
-    p += h
-    print(f"{p} -> del tipo {type(p)}")
-    p -= s
-    print(p)
-    print(p.take(2))
-    print(p)
-    h.reveal()
+    #h.reveal(p)
+    h = h + c4 + s #print(h[:])
+    t = Set_of_Cards()
+    print(f"hand: {h}\ntest: {t}\n\n")
+    t = h[-1 : 0 : -2]
+    print(f"hand: {h}\ntest: {t}\n\n")
+    x = h[1:5]
+    t = x
+    print(f"hand: {h}\ntest: {t}\n\nx: {x}")
+    print(h[2:])
+
+
