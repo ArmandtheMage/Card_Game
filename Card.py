@@ -28,35 +28,6 @@ class Card:
             return True
         else:
             return False
-        
-class Hand:
-    def __init__(self, initial_hand=[], hand_limit:int=-1) -> None:
-        self.limit = hand_limit
-        self.cards = initial_hand
-    
-    def reveal(self, subset:list, random:int=0):
-        if random == 0:
-            for card in self.cards:
-                print(card)
-        elif random > 0:
-            ...
-        else:
-            print("Valore random non settato correttamente")
-
-    def add_cards(self, cards:list):
-        self.cards.exted(cards)
-
-    def is_playable(self, cards:list):
-        isPlayable = True
-        n = 0
-
-        while(isPlayable and n < len(cards)):
-            if cards[0] in self.hand:
-                n += 1
-            else:
-                isPlayable = False
-        
-        return isPlayable
     
 if __name__ == "__main__":
     card = Card(2,'P')
