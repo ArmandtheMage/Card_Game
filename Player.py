@@ -1,5 +1,6 @@
-from Deck import Deck
-from Card import Card
+from my_deck import Deck
+from my_card import Card
+import sets_card as sets
 
 SEEDS = ['C', 'Q', 'F', 'P']
 CARD_VALUES = list(range(2, 11))
@@ -8,6 +9,11 @@ WILD_CARD_SEED = '*'
 WILD_CARD_VALUE = "Jolly"
 
 class Player:
+    id = 0 #check if initialize or not
+    def __init__(self, deck, nickname:str = "", initial_score = 0) -> None:
+        id += 1
+
+class Player1:
     def __init__(self, deck:Deck, nickname:str="", initial_score=0) -> None:
         self.deck = deck
         self.nickname = nickname

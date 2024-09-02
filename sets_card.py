@@ -1,6 +1,6 @@
 """Definisce i set di carte in modo che possano essere gestiti"""
 import random
-from Card import Card
+import my_card
 
 TYPES_OF_SETS = ["free", "stack", "queue"]
 
@@ -9,7 +9,7 @@ class Set_of_Cards():
     kind = 0
 
     def __init__(self, cards: list = [],
-                 limit = -1) -> None:
+                 limit = -1, draw_logic:int = 0) -> None:
         """
         Crea un 'free' set of cards.
         cards
@@ -17,20 +17,26 @@ class Set_of_Cards():
         limit
             determina un limite alle carte che possono essere in questo set
             -1 non c'è limite
+        draw_logic
+            determina la logica di gestione di limite di mano quando
+            si pescano carte. 0 pesca fino a riempire il set. 1 pesca
+            ignorando il limite, questo implica che deve ci dovrà essere
+            un controllo dopo. -1 non pescare se superi il limite.
         """
         self.cards = cards
         # ? limiti 0 come set senza limiti
         self.limit = limit
         self.loop_index = 0
+        self.draw_logic = draw_logic
         # ? inserire un parametro per la visibilità
 
     # ? Chiamarla is_free_space
-    def is_addable(self, obj: object):
+    def is_addable(self, obj: object): # farlo meglio?
         """"
         Definisce se obj può essere aggiunto al set, utile per gestire
         il limite della mano successivamente.
         """
-        if isinstance(obj, Set_of_Cards) or isinstance(obj, Card):
+        if isinstance(obj, Set_of_Cards) or isinstance(obj, my_card.Card):
             if len(self) + len(obj) <= self.limit or self.limit < 0:
                 return True
             else:
@@ -38,17 +44,37 @@ class Set_of_Cards():
         else:
             raise TypeError(f"Unsupported operand {type(obj)} for +")
 
-    def __add__(self, obj: object):
+    def __add__(self, obj: object): # 0 draw_logic non alza eccezione, va bene?
+        x = Set_of_Cards(self.cards.copy(), self.limit, self.draw_logic)
         if self.is_addable(obj):
-            if isinstance(obj, Set_of_Cards):
-                self.cards = self.cards + obj.cards
-                return self
-            elif isinstance(obj, Card):
-                self.cards.append(obj)
-                return self
+            stop = None
+            #if isinstance(obj, Set_of_Cards):
+            #    self.cards = self.cards + obj.cards
+            #    return self
+            #elif isinstance(obj, my_card.Card):
+            #    self.cards.append(obj)
+            #    return self
         else:
-            raise OverflowError("Non puoi sforare il limite imposto")
-        
+            if self.draw_logic == -1:
+                raise OverflowError("Non puoi sforare il limite imposto")
+            elif self.draw_logic == 0:
+                stop = self.limit - len(self)
+            elif self.draw_logic == 1:
+                stop = None
+
+        if isinstance(obj, Set_of_Cards):
+            #self.cards = self.cards + obj.cards[:stop]
+            x.cards = x.cards + obj.cards[:stop]
+            #return self
+        elif isinstance(obj, my_card.Card):
+            if stop is None or stop > 0:
+                #self.cards.append(obj)
+                x.cards.append(obj)
+            #return self
+            #else:
+            #    raise OverflowError("Non puoi sforare il limite imposto")
+        return x
+    # TODO CHECK SE VA DOPO LA MODIFICA
     def __radd__(self, other):
         return self.__add__(other)
 
@@ -108,7 +134,7 @@ class Set_of_Cards():
         return self.cards[n]
     
     def __contains__(self, obj: object):
-        if isinstance(obj, Card):
+        if isinstance(obj, my_card.Card):
             return obj in self.cards
         elif isinstance(obj, Set_of_Cards):
             are_in = True
@@ -126,7 +152,7 @@ class Set_of_Cards():
                     for card in obj:
                         self.cards.pop(self.cards.index(card))
                     return self
-                elif isinstance(obj, Card):
+                elif isinstance(obj, my_card.Card):
                     self.cards.pop(self.cards.index(obj)) ##### definire una funzione per la ricerca?
                     return self
                 else:
@@ -154,7 +180,7 @@ class Set_of_Cards():
                 print(card2show)
             else:
                 raise ValueError("Provato a rivelare un numero non positivo di carte")
-        elif isinstance(rand_or_sub, Set_of_Cards) or isinstance(rand_or_sub, Card):
+        elif isinstance(rand_or_sub, Set_of_Cards) or isinstance(rand_or_sub, my_card.Card):
             if rand_or_sub in self:
                 print(rand_or_sub)
             else:
@@ -193,8 +219,13 @@ class Set_of_Cards():
         return card2draw
             
     def index(self, cards):
+        """
+        Recupera l'indice della carta o una lista di indici.
+        card
+            un selemento di tipo 'Card' o 'Set_of_card'
+        """
         if cards in self:
-            if isinstance(cards, Card):
+            if isinstance(cards, my_card.Card):
                 return self.cards.index(cards)
             elif isinstance(Set_of_Cards):
                 index = []
@@ -205,6 +236,9 @@ class Set_of_Cards():
         else:
             raise ValueError(f"{cards} non presenti")
         
+    def clear(self):
+        self.cards = []
+
 
 class CardStack(Set_of_Cards):
     """Stack of Cards, make your piles"""
@@ -226,7 +260,7 @@ class CardStack(Set_of_Cards):
             if isinstance(obj, Set_of_Cards):
                 self.cards = obj.cards + self.cards
                 return self
-            elif isinstance(obj, Card):
+            elif isinstance(obj, my_card.Card):
                 self.cards.insert(0, obj)
                 return self
         else:
@@ -252,15 +286,16 @@ class CardStack(Set_of_Cards):
 class Hand(Set_of_Cards): # probabilmente gestita da gioco
     def __init__(self, cards: list = [],
                  hand_limit: int = -1,
+                 draw_logic:int = 0
                  ) -> None:
         """cards
             sono le carte che rappresentano il set
         hand_limit
             numero massimo di carte in mano"""
-        super().__init__(cards, hand_limit)
+        super().__init__(cards, hand_limit, draw_logic)
 
 
-    def is_playable(self, cards:Set_of_Cards | Card) -> bool: # sostituita da in
+    def is_playable(self, cards:Set_of_Cards | my_card.Card) -> bool: # sostituita da in
         #is_playable = True
         #n = 0
 #
@@ -307,26 +342,30 @@ class CardQueue(Set_of_Cards):
 
 
 if __name__ == "__main__":
-    c1 = Card(2, 'Q')
-    c2 = Card(4, 'Q')
-    c3 = Card(7, 'P')
-    c4 = Card('A', 'C')
+    c1 = my_card.FrenchCard(2, 1)
+    c2 = my_card.FrenchCard(4, 1)
+    c3 = my_card.FrenchCard(7, 3)
+    c4 = my_card.FrenchCard(12, 0)
 
     s = Set_of_Cards([c2, c1])
-    h = Hand([c1, c2, c3], hand_limit=7)
+    h = Hand([c1, c2, c3], hand_limit=7, draw_logic=1)
     p = CardStack([c3, c4])
     q = CardQueue([c4, c3, c1, c4, c2, c2])
 
     #h.reveal(p)
-    q += h
-    q += c1
-    t = Set_of_Cards()
-    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\n")
-    mode = 0
-    t = q.take(2)
-    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\n")
-    x = q.take(3)
-    t = x
-    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\nx: {x}")
-    q -= s
-    print(f"hand: {h}\ntest: {t}\nqueue: {q}\n\ns: {s}")
+    print(f"s: {s}")
+    print(f"h: {h}")
+    h += s + q
+    print(f"s: {s}")
+    print(f"h: {h}")
+    h += c4 + s
+    print(f"s: {s}")
+    print(f"h: {h}")
+    h += s
+    print(f"s: {s}")
+    print(f"h: {h}")
+    h += s
+    h = c4 + h
+    print(f"s: {s}")
+    print(f"h: {h}")
+    #print(q[:-1])
