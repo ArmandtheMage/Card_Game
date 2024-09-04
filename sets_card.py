@@ -133,6 +133,13 @@ class Set_of_Cards():
             return cards2return
         return self.cards[n]
     
+# ! Set Item fa quello che vuoi ma solo su attributi
+    def __setitem__(self, idx, obj):
+        if isinstance(obj, my_card.Card):
+            self.cards[idx].__dict__ = obj.__dict__
+        else:
+            raise TypeError("Only Cards can be assigned to set of cards")
+
     def __contains__(self, obj: object):
         if isinstance(obj, my_card.Card):
             return obj in self.cards
@@ -256,6 +263,8 @@ class CardStack(Set_of_Cards):
         super().__init__(cards, limit)
 
     def __add__(self, obj: object):
+        # TODO Fare i controlli su limit e cambiare self con x
+        # ! testare a lot
         if self.is_addable(obj):
             if isinstance(obj, Set_of_Cards):
                 self.cards = obj.cards + self.cards
@@ -356,6 +365,7 @@ if __name__ == "__main__":
     print(f"s: {s}")
     print(f"h: {h}")
     h += s + q
+    s[1] = c4
     print(f"s: {s}")
     print(f"h: {h}")
     h += c4 + s
