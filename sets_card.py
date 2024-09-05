@@ -8,7 +8,7 @@ class Set_of_Cards():
     """Free set_of_Cards"""
     kind = 0
 
-    def __init__(self, cards: list = [],
+    def __init__(self, cards: list[my_card.Card] = [],
                  limit = -1, draw_logic:int = 0) -> None:
         """
         Crea un 'free' set of cards.
@@ -30,6 +30,15 @@ class Set_of_Cards():
         self.draw_logic = draw_logic
         # ? inserire un parametro per la visibilità
 
+    @classmethod
+    def from_reference(cls, cards:list[my_card.Card], 
+                        limit = -1, draw_logic = 0):
+        set2return = cls([], limit, draw_logic)
+        for card in cards:
+            card2add = card.copy()
+            set2return.cards.append(card2add)
+        return set2return
+
     # ? Chiamarla is_free_space
     def is_addable(self, obj: object): # farlo meglio?
         """"
@@ -46,30 +55,43 @@ class Set_of_Cards():
 
     def __add__(self, obj: object): # 0 draw_logic non alza eccezione, va bene?
         x = Set_of_Cards(self.cards.copy(), self.limit, self.draw_logic)
-        if self.is_addable(obj):
-            stop = None
-            #if isinstance(obj, Set_of_Cards):
-            #    self.cards = self.cards + obj.cards
-            #    return self
-            #elif isinstance(obj, my_card.Card):
-            #    self.cards.append(obj)
-            #    return self
-        else:
+        if not self.is_addable(obj):
             if self.draw_logic == -1:
-                raise OverflowError("Non puoi sforare il limite imposto")
+                card_drawable = 0
             elif self.draw_logic == 0:
-                stop = self.limit - len(self)
-            elif self.draw_logic == 1:
-                stop = None
+                card_drawable = self.limit - len(self)
+            raise OverflowError(card_drawable,
+                                "Stai sforando il numero di carte")
+        else:
+            ...
+            # * ROBA MODIFICATA, DA RITESTARE
+            #if self.is_addable(obj):
+            #    stop = None
+            #    #if isinstance(obj, Set_of_Cards):
+            #    #    self.cards = self.cards + obj.cards
+            #    #    return self
+            #    #elif isinstance(obj, my_card.Card):
+            #    #    self.cards.append(obj)
+            #    #    return self
+            #else:
+            #    if self.draw_logic == -1:
+            #        raise OverflowError("Non puoi sforare il limite imposto")
+            #    elif self.draw_logic == 0:
+            #        stop = self.limit - len(self)
+            #        raise OverflowError(stop)
+            #    elif self.draw_logic == 1:
+            #        stop = None
 
         if isinstance(obj, Set_of_Cards):
             #self.cards = self.cards + obj.cards[:stop]
-            x.cards = x.cards + obj.cards[:stop]
+            #*x.cards = x.cards + obj.cards[:stop]
+            x.cards = x.cards + obj.cards
             #return self
         elif isinstance(obj, my_card.Card):
-            if stop is None or stop > 0:
+            #*if stop is None or stop > 0:
                 #self.cards.append(obj)
-                x.cards.append(obj)
+            #* -1 tab
+            x.cards.append(obj)
             #return self
             #else:
             #    raise OverflowError("Non puoi sforare il limite imposto")
@@ -105,7 +127,7 @@ class Set_of_Cards():
  
     def __getitem__(self, n):
         if isinstance(n, slice):
-            cards2return = Set_of_Cards()
+            cards2return = Set_of_Cards([])
             
             if n.start == None:
                 sta = 0
@@ -130,13 +152,14 @@ class Set_of_Cards():
             for i in range(sta, sto, ste):
                 item = self.cards[i]
                 cards2return += item
-            return cards2return
+            return cards2return 
         return self.cards[n]
     
 # ! Set Item fa quello che vuoi ma solo su attributi
     def __setitem__(self, idx, obj):
-        if isinstance(obj, my_card.Card):
-            self.cards[idx].__dict__ = obj.__dict__
+        if isinstance(obj, my_card.FrenchCard):
+            x = my_card.FrenchCard(obj.value, obj.suit)
+            self.cards[idx] = x
         else:
             raise TypeError("Only Cards can be assigned to set of cards")
 
@@ -305,20 +328,8 @@ class Hand(Set_of_Cards): # probabilmente gestita da gioco
 
 
     def is_playable(self, cards:Set_of_Cards | my_card.Card) -> bool: # sostituita da in
-        #is_playable = True
-        #n = 0
-#
         if len(self) < len(cards):
             raise IndexError("Stai giocando troppe carte")
-        #
-        #while(is_playable and n < len(cards)):
-        #    if cards[n] in self.cards:
-        #        n += 1
-        #    else:
-        #        is_playable = False
-        #
-        #return is_playable
-        
         return cards in self
 
 
@@ -356,26 +367,41 @@ if __name__ == "__main__":
     c3 = my_card.FrenchCard(7, 3)
     c4 = my_card.FrenchCard(12, 0)
 
-    s = Set_of_Cards([c2, c1])
-    h = Hand([c1, c2, c3], hand_limit=7, draw_logic=1)
+    #s = Set_of_Cards([c2, c1])
+    s = Set_of_Cards([c2, c1])#.from_reference([c2, c1])
+    h = Hand([c1, c2, c3], hand_limit=7, draw_logic=0)
     p = CardStack([c3, c4])
     q = CardQueue([c4, c3, c1, c4, c2, c2])
 
     #h.reveal(p)
     print(f"s: {s}")
     print(f"h: {h}")
-    h += s + q
+    print(f"q: {q}")
+    try:
+        h += q
+    except OverflowError as e:
+        m = e.args[0]
+        print(f"Hai pescato {m} carte")
     s[1] = c4
+    x = 1
+    x = q.take(2)
     print(f"s: {s}")
     print(f"h: {h}")
-    h += c4 + s
-    print(f"s: {s}")
-    print(f"h: {h}")
-    h += s
-    print(f"s: {s}")
-    print(f"h: {h}")
-    h += s
-    h = c4 + h
-    print(f"s: {s}")
-    print(f"h: {h}")
-    #print(q[:-1])
+    print(f"q: {q}")
+    print(f"x: {x}")
+
+    x = q.take(2)
+    print(f"q: {q}")
+    print(f"x: {x}")
+    #h += c4 + s
+    #print(f"s: {s}")
+    #print(f"h: {h}")
+    #h += s
+    #print(f"s: {s}")
+    #print(f"h: {h}")
+    #h += s
+    #h = c4 + h
+    #print(f"s: {s}")
+    #print(f"h: {h}")
+    ##print(q[:-1])
+#
