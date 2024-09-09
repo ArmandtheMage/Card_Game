@@ -1,15 +1,18 @@
 """Definisce i set di carte in modo che possano essere gestiti"""
 import random
 import my_card
+#import stackcard as sc
 
 TYPES_OF_SETS = ["free", "stack", "queue"]
 
+#### ! l'addizione va bene anche a più fattpri
+#### ! il += solo 1
 class Set_of_Cards():
     """Free set_of_Cards"""
     kind = 0
 
     def __init__(self, cards: list[my_card.Card] = [],
-                 limit = -1, draw_logic:int = 0) -> None:
+                 limit = -1, draw_logic:int = 0, default_mode = 0) -> None:
         """
         Crea un 'free' set of cards.
         cards
@@ -22,82 +25,34 @@ class Set_of_Cards():
             si pescano carte. 0 pesca fino a riempire il set. 1 pesca
             ignorando il limite, questo implica che deve ci dovrà essere
             un controllo dopo. -1 non pescare se superi il limite.
+        default_mode
+            determina da dove pescare: 1 dal primo elemento, -1 dall'ultimo,
+            0 in maniera randomica. 
         """
         self.cards = cards
         # ? limiti 0 come set senza limiti
         self.limit = limit
         self.loop_index = 0
         self.draw_logic = draw_logic
+        self.default_mode = default_mode
         # ? inserire un parametro per la visibilità
-
-    @classmethod
-    def from_reference(cls, cards:list[my_card.Card], 
-                        limit = -1, draw_logic = 0):
-        set2return = cls([], limit, draw_logic)
-        for card in cards:
-            card2add = card.copy()
-            set2return.cards.append(card2add)
-        return set2return
-
-    # ? Chiamarla is_free_space
-    def is_addable(self, obj: object): # farlo meglio?
-        """"
-        Definisce se obj può essere aggiunto al set, utile per gestire
-        il limite della mano successivamente.
-        """
-        if isinstance(obj, Set_of_Cards) or isinstance(obj, my_card.Card):
-            if len(self) + len(obj) <= self.limit or self.limit < 0:
-                return True
-            else:
-                return False
+    
+    def __add__(self, obj: object):
+        if isinstance(obj, my_card.Card) :
+            drawable = self.how_many_add(1)
+            if drawable > 0:
+                self.cards.append(obj)
+        
+        elif isinstance(obj, Set_of_Cards):
+            drawable = self.how_many_add(len(obj))
+            self.cards += obj.cards[:drawable]
         else:
-            raise TypeError(f"Unsupported operand {type(obj)} for +")
+            raise TypeError("Solo carte o set")
+        return self
 
-    def __add__(self, obj: object): # 0 draw_logic non alza eccezione, va bene?
-        x = Set_of_Cards(self.cards.copy(), self.limit, self.draw_logic)
-        if not self.is_addable(obj):
-            if self.draw_logic == -1:
-                card_drawable = 0
-            elif self.draw_logic == 0:
-                card_drawable = self.limit - len(self)
-            raise OverflowError(card_drawable,
-                                "Stai sforando il numero di carte")
-        else:
-            ...
-            # * ROBA MODIFICATA, DA RITESTARE
-            #if self.is_addable(obj):
-            #    stop = None
-            #    #if isinstance(obj, Set_of_Cards):
-            #    #    self.cards = self.cards + obj.cards
-            #    #    return self
-            #    #elif isinstance(obj, my_card.Card):
-            #    #    self.cards.append(obj)
-            #    #    return self
-            #else:
-            #    if self.draw_logic == -1:
-            #        raise OverflowError("Non puoi sforare il limite imposto")
-            #    elif self.draw_logic == 0:
-            #        stop = self.limit - len(self)
-            #        raise OverflowError(stop)
-            #    elif self.draw_logic == 1:
-            #        stop = None
-
-        if isinstance(obj, Set_of_Cards):
-            #self.cards = self.cards + obj.cards[:stop]
-            #*x.cards = x.cards + obj.cards[:stop]
-            x.cards = x.cards + obj.cards
-            #return self
-        elif isinstance(obj, my_card.Card):
-            #*if stop is None or stop > 0:
-                #self.cards.append(obj)
-            #* -1 tab
-            x.cards.append(obj)
-            #return self
-            #else:
-            #    raise OverflowError("Non puoi sforare il limite imposto")
-        return x
-    # TODO CHECK SE VA DOPO LA MODIFICA
     def __radd__(self, other):
+        #x = Set_of_Cards(self.cards, self.limit, self.draw_logic)
+        #return x.__add__(other)
         return self.__add__(other)
 
     def __str__(self) -> str: # or repr
@@ -147,6 +102,10 @@ class Set_of_Cards():
                 ste = 1
             else:
                 ste = n.step
+                if ste < 0:
+                    tmp = sta
+                    sta = sto -1
+                    sto = tmp -1
 
             cards2return.cards = []
             for i in range(sta, sto, ste):
@@ -155,7 +114,7 @@ class Set_of_Cards():
             return cards2return 
         return self.cards[n]
     
-# ! Set Item fa quello che vuoi ma solo su attributi
+# * Set Item fa quello che vuoi ma solo su attributi
     def __setitem__(self, idx, obj):
         if isinstance(obj, my_card.FrenchCard):
             x = my_card.FrenchCard(obj.value, obj.suit)
@@ -219,7 +178,42 @@ class Set_of_Cards():
         else:
             raise TypeError(f"Provato a rivelare {type(rand_or_sub)} da un {self.__class__.__name__}")
 
-    def draw(self, number = 1, mode:int = 1):
+    def has_free_space(self, obj: object):
+        """"
+        Definisce se obj può essere aggiunto al set, utile per gestire
+        il limite della mano successivamente.
+        """
+        if isinstance(obj, Set_of_Cards) or isinstance(obj, my_card.Card):
+            drawable_card = len(self) + len(obj) - self.limit
+            if drawable_card > 0 or self.limit < 0:
+                return True
+            else:
+                if drawable_card < 0:
+                    drawable_card = 0
+                raise ValueError(drawable_card, "Non hai abbastanza spazio")
+        else:
+            raise TypeError(f"Unsupported operand {type(obj)} for +")
+
+    def how_many_add(self, number) -> int:
+        """
+        definisce se posso aggiungere delle carte al mio set,
+        nel caso ritorna il numero massimo.
+        """
+        if number > 0:
+            free_space = self.limit - len(self) # 7 -5 -4 -> space = -2
+            if self.draw_logic == 1 or free_space >= number or self.limit < 0:
+                return number
+            elif self.draw_logic == 0:
+                return free_space
+            elif self.draw_logic == -1:
+                return 0
+            else:
+                raise TypeError("Tipo o valore non corretto")
+        else:
+            raise ValueError("Non puoi aggiungere un numero negativo di carte")
+
+
+    def get_cards(self, number: int, mode):
         """
         Recupera carte dal set di carte.
 
@@ -230,90 +224,134 @@ class Set_of_Cards():
             0 in maniera randomica
         """
         if 0 < number <= len(self):
-            card2draw = Set_of_Cards([]) # il default gli da problemi
+            # ? aggiungere controllo se ho una sola carta
+            #card2draw = Set_of_Cards([])
             if mode == 1:
-                for i in range(number):
-                    card2draw += self.cards.pop(0)
+                card2draw = Set_of_Cards(self.cards[:number])
+
             elif mode == 0:
                 card2draw = Set_of_Cards(random.sample(self.cards, number))
-                for card in card2draw:
-                    self.cards.remove(card)
-            elif mode == -1:
-                for i in range(number):
-                    card2draw += self.cards.pop()
-            else:
-                raise ValueError(mode, "Modalità selezionata non gestita")
-        else:
-            raise IndexError("Provato a pescare più carte di quante ne hai")
-        
-        return card2draw
             
-    def index(self, cards):
+            elif mode == -1:
+                card2draw = Set_of_Cards(self.cards[-number:])
+            
+            else:
+                raise TypeError(mode, "Modalità selezionata non gestita")
+            return card2draw
+        else:
+            if number > 0:
+                raise ValueError(len(self), "Vuoi più carte di quante ne hai")
+            
+
+    def draw(self, target, number: int = 1, mode = None):
+        """
+        Pesca carte da un bersaglio e le aggiunge a se stesso.
+        target
+            card o Set of Cards bersaglio da cui pescare le carte.
+        number
+            numero di carte da pescare. default 1
+        mode
+            modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
+            0 in maniera randomica. default 1
+        """
+        drawable_card = self.how_many_add(number)
+        
+        if drawable_card > 0:
+            if mode == None:
+                mode = target.default_mode
+            try:
+                card2draw = target.get_cards(drawable_card, mode)
+            except ValueError as e:
+                drawable_card = e.args[0] # pesco fino al massimo
+                card2draw = target.get_cards(drawable_card, mode)
+                print("Pesco fino a consumare il target")
+            
+            self += card2draw
+            if mode == -1:
+                target.cards = target.cards[::-1]
+
+            target -= card2draw
+            
+            if mode == -1:
+                target.cards = target.cards[::-1]
+
+
+    def index(self, cards) -> int | list[int]:
         """
         Recupera l'indice della carta o una lista di indici.
         card
             un selemento di tipo 'Card' o 'Set_of_card'
         """
+        if isinstance(cards, list):
+            cards = Set_of_Cards(cards)
         if cards in self:
             if isinstance(cards, my_card.Card):
                 return self.cards.index(cards)
-            elif isinstance(Set_of_Cards):
+            elif isinstance(cards, Set_of_Cards):
                 index = []
                 for card in cards:
                     index.append(self.cards.index(card))
+                return index
             else:
                 raise TypeError("Tipo non riconosciuto")
         else:
             raise ValueError(f"{cards} non presenti")
         
     def clear(self):
-        self.cards = []
+        self.cards.clear()
 
 
 class CardStack(Set_of_Cards):
     """Stack of Cards, make your piles"""
     kind = 1
 
-    def __init__(self, cards: list = [], limit = -1) -> None:
+    def __init__(self, cards: list = [], limit = -1, draw_logic = 1) -> None:
         """
         Crea un 'stack' set of cards.
         cards
-            sono le carte che rappresentano la pila o stack
+            sono le carte che rappresentano la pila o stack.
         limit
             determina un limite alle carte che possono essere in questo set
-            -1 non c'è limite
+            -1 non c'è limite.
+        draw_logic
+            determina la logica di gestione di limite di mano quando
+            si pescano carte. 0 pesca fino a riempire il set. 1 pesca
+            ignorando il limite, questo implica che deve ci dovrà essere
+            un controllo dopo. -1 non pescare se superi il limite.
         """
-        super().__init__(cards, limit)
+        super().__init__(cards, limit, draw_logic)
+
 
     def __add__(self, obj: object):
-        # TODO Fare i controlli su limit e cambiare self con x
-        # ! testare a lot
-        if self.is_addable(obj):
-            if isinstance(obj, Set_of_Cards):
-                self.cards = obj.cards + self.cards
-                return self
-            elif isinstance(obj, my_card.Card):
-                self.cards.insert(0, obj)
-                return self
-        else:
-            raise OverflowError("Non puoi sforare il limite imposto")
-        
-    def __sub__(self, obj: object):
-        return super().__sub__(obj)
-
-    def take(self, number = 1):
-        """"
-        Prende carte dalla cima.
-        number
-            numero di carte da prendere. default 1.
         """
-        #if len(self) > number:
-        #    card2take = Set_of_Cards(self[:number])
-        #else:
-        #    raise IndexError("Hai provato a pescare più carte del quante ce ne sono")
-        #
-        #return card2take
-        return self.draw(number=number, mode=1)
+        Aggiunge in testa, nelle posizioni iniziali
+        """
+        if isinstance(obj, my_card.Card) :
+            drawable = self.how_many_add(1)
+            if drawable > 0:
+                self.cards.insert(0, obj)
+        
+        elif isinstance(obj, Set_of_Cards):
+            drawable = self.how_many_add(len(obj))
+            # ? da valutare se aggiungere [::-1]
+            self.cards = obj.cards[:drawable] + self.cards
+        else:
+            raise TypeError("Solo carte o set")
+        return self
+
+    def draw(self, target, number: int = 1):
+        """
+        Pesca carte da un bersaglio e le aggiunge a se stesso.
+        target
+            card o Set of Cards bersaglio da cui pescare le carte.
+        number
+            numero di carte da pescare. default 1
+        mode
+            modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
+            0 in maniera randomica. default 1
+        """
+        return super().draw(target, number, mode=1)
+
 
 class Hand(Set_of_Cards): # probabilmente gestita da gioco
     def __init__(self, cards: list = [],
@@ -337,28 +375,35 @@ class CardQueue(Set_of_Cards):
     """Queue of Cards, make your queue"""
     kind = 2
 
-    def __init__(self, cards: list = [], limit = -1) -> None:
+    def __init__(self, cards: list = [], limit = -1, draw_logic = 1) -> None:
         """
         Crea una 'queue' set of cards.
         cards
-            sono le carte che rappresentano la coda o queue
+            sono le carte che rappresentano la coda o queue.
         limit
             determina un limite alle carte che possono essere in questo set
-            -1 non c'è limite
+            -1 non c'è limite.
+        draw_logic
+            determina la logica di gestione di limite di mano quando
+            si pescano carte. 0 pesca fino a riempire il set. 1 pesca
+            ignorando il limite, questo implica che deve ci dovrà essere
+            un controllo dopo. -1 non pescare se superi il limite.
         """
         super().__init__(cards, limit)
-        
-    def __sub__(self, obj: object):
-        return super().__sub__(obj)
 
 
-    def take(self, number = 1):
-        """"
-        Prende carte dalle prime aggiunte, quindi le più vecchie e a sx.
-        number
-            numero di carte da prendere. default 1.
+    def draw(self, target, number: int = 1):
         """
-        return self.draw(number=number, mode=1)
+        Pesca carte da un bersaglio e le aggiunge a se stesso.
+        target
+            card o Set of Cards bersaglio da cui pescare le carte.
+        number
+            numero di carte da pescare. default 1
+        mode
+            modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
+            0 in maniera randomica. default 1
+        """
+        return super().draw(target, number, mode=1)
 
 
 if __name__ == "__main__":
@@ -367,41 +412,38 @@ if __name__ == "__main__":
     c3 = my_card.FrenchCard(7, 3)
     c4 = my_card.FrenchCard(12, 0)
 
-    #s = Set_of_Cards([c2, c1])
-    s = Set_of_Cards([c2, c1])#.from_reference([c2, c1])
-    h = Hand([c1, c2, c3], hand_limit=7, draw_logic=0)
+    s = Set_of_Cards([c2, c1])
+    h = Set_of_Cards([c1, c2, c3], limit=7, draw_logic=1)
     p = CardStack([c3, c4])
     q = CardQueue([c4, c3, c1, c4, c2, c2])
 
-    #h.reveal(p)
-    print(f"s: {s}")
-    print(f"h: {h}")
+    print(f"h:{h}")
+    print(f"p:{q}")
+    print(f"s:{s}")
+    q = q + h + s
+    print(f"h:{h}")
+    print(f"s:{s}")
+    print(f"p:{q}")
+    q = q + s + c4
+    print(f"h:{h}")
+    print(f"q:{q}")
+    print(f"s:{s}")
+
+    x = Set_of_Cards([], limit=9, draw_logic=1)
+    print(f"#################\n# draw_logic: {x.draw_logic} #\n#################")
     print(f"q: {q}")
-    try:
-        h += q
-    except OverflowError as e:
-        m = e.args[0]
-        print(f"Hai pescato {m} carte")
-    s[1] = c4
-    x = 1
-    x = q.take(2)
-    print(f"s: {s}")
-    print(f"h: {h}")
+    print(f"x: {x}")
+    print()
+    x.draw(q, 3, -1)
+    print(f"q: {q}")
+    print(f"x: {x}")
+    x.draw(q, 5, 0)
+    print()
+    print(f"q: {q}")
+    print(f"x: {x}")
+    x.draw(q, 2, 1)
+    print()
     print(f"q: {q}")
     print(f"x: {x}")
 
-    x = q.take(2)
-    print(f"q: {q}")
-    print(f"x: {x}")
-    #h += c4 + s
-    #print(f"s: {s}")
-    #print(f"h: {h}")
-    #h += s
-    #print(f"s: {s}")
-    #print(f"h: {h}")
-    #h += s
-    #h = c4 + h
-    #print(f"s: {s}")
-    #print(f"h: {h}")
-    ##print(q[:-1])
-#
+    print(q[::-1])

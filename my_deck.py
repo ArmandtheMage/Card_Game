@@ -165,5 +165,5 @@ if __name__ == "__main__":
     print(prova)
     t = prova.shuffle().draw(20, True)
     print(f"\n\n{t}")
-    #prova.add_graveyard(t)
+    prova.add_graveyard(t)
     print(prova)
