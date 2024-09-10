@@ -16,9 +16,9 @@ class Card:
     def __len__(self):
         return 1
     
-    #def copy(self):
-    #    name = self.name
-    #    return Card(name)
+    def copy(self):
+        name = self.name
+        return Card(name)
     
 
 class FrenchCard(Card):
@@ -61,10 +61,10 @@ class FrenchCard(Card):
     def clear(self): # ! check if is good
         self = None
 
-    #def copy(self):
-    #    value = self.value
-    #    suit = self.suit
-    #    return FrenchCard(value, suit)
+    def copy(self):
+        value = self.value
+        suit = self.suit
+        return FrenchCard(value, suit)
 
 class HieroglypKhepri(Card):
     """
@@ -75,7 +75,7 @@ class HieroglypKhepri(Card):
     COLORS = ["Rosso", "Blu", "Giallo", "Verde", "Marrone"]
 
     def __init__(self, resource, simbol, color) -> None:
-        self.resource = self.resource 
+        self.resource = resource 
         self.simbol = simbol
         self.color = color
         self.name = self.SIMBOLS[self.simbol] + " " + self.COLORS[color]
@@ -83,6 +83,9 @@ class HieroglypKhepri(Card):
     
     def __eq__(self, obj: object) -> bool:
         return self.simbol == obj.simbol and self.color == obj.color
+    
+    def copy(self):
+        return HieroglypKhepri(self.resource, self.simbol, self.color)
 
 
 class ScribeKhepri(Card):

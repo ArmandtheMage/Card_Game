@@ -5,14 +5,16 @@ import my_card
 
 TYPES_OF_SETS = ["free", "stack", "queue"]
 
-#### ! l'addizione va bene anche a più fattpri
+#### ! l'addizione va bene anche a più fattori
 #### ! il += solo 1
+#### ! per ora l'add_mode non è utilizzato perchè ogni classe specializza il suo add
 class Set_of_Cards():
     """Free set_of_Cards"""
     kind = 0
 
     def __init__(self, cards: list[my_card.Card] = [],
-                 limit = -1, draw_logic:int = 0, default_mode = 0) -> None:
+                 limit = -1, draw_logic:int = 0,
+                 add_mode = -1, remove_mode = 1) -> None:
         """
         Crea un 'free' set of cards.
         cards
@@ -25,16 +27,18 @@ class Set_of_Cards():
             si pescano carte. 0 pesca fino a riempire il set. 1 pesca
             ignorando il limite, questo implica che deve ci dovrà essere
             un controllo dopo. -1 non pescare se superi il limite.
-        default_mode
-            determina da dove pescare: 1 dal primo elemento, -1 dall'ultimo,
-            0 in maniera randomica. 
+        add_mode & remove_mode
+            determina dove aggiunge o toglie carte: 1 dal primo elemento,
+            -1 dall'ultimo, 0 (solo remove) in maniera randomica.
+            default add -1, remove 1. -> aggiungo in coda prendo dalla testa.
         """
         self.cards = cards
         # ? limiti 0 come set senza limiti
         self.limit = limit
         self.loop_index = 0
         self.draw_logic = draw_logic
-        self.default_mode = default_mode
+        self.add_mode = add_mode
+        self.remove_mode = remove_mode
         # ? inserire un parametro per la visibilità
     
     def __add__(self, obj: object):
@@ -79,10 +83,14 @@ class Set_of_Cards():
             return item
         except IndexError:
             raise StopIteration
- 
+
+    def same_type(self):
+        return Set_of_Cards([], self.limit, self.draw_logic,
+                            self.add_mode, self.remove_mode)
+
     def __getitem__(self, n):
         if isinstance(n, slice):
-            cards2return = Set_of_Cards([])
+            cards2return = self.same_type()
             
             if n.start == None:
                 sta = 0
@@ -107,7 +115,6 @@ class Set_of_Cards():
                     sta = sto -1
                     sto = tmp -1
 
-            cards2return.cards = []
             for i in range(sta, sto, ste):
                 item = self.cards[i]
                 cards2return += item
@@ -116,8 +123,8 @@ class Set_of_Cards():
     
 # * Set Item fa quello che vuoi ma solo su attributi
     def __setitem__(self, idx, obj):
-        if isinstance(obj, my_card.FrenchCard):
-            x = my_card.FrenchCard(obj.value, obj.suit)
+        if isinstance(obj, my_card.Card):
+            x = obj.copy()
             self.cards[idx] = x
         else:
             raise TypeError("Only Cards can be assigned to set of cards")
@@ -137,15 +144,19 @@ class Set_of_Cards():
     def __sub__(self, obj: object):
         if len(self) > 0:
             if obj in self:
+                #* considerare
+                #if self.default_mode == -1:
+                #    self.cards = self.cards[::-1]
                 if isinstance(obj, Set_of_Cards):
                     for card in obj:
                         self.cards.pop(self.cards.index(card))
-                    return self
                 elif isinstance(obj, my_card.Card):
-                    self.cards.pop(self.cards.index(obj)) ##### definire una funzione per la ricerca?
-                    return self
+                    self.cards.pop(self.cards.index(obj))
                 else:
                     raise TypeError(f"Non puoi rimuovere {type(obj)} da {self.__class__.__name__}")
+                #if self.default_mode == -1:
+                #    self.cards = self.cards[::-1]
+                return self
             else:
                 raise ValueError(f"{str(obj)} non è presente in {self.__class__.__name__}")
         else:
@@ -178,6 +189,7 @@ class Set_of_Cards():
         else:
             raise TypeError(f"Provato a rivelare {type(rand_or_sub)} da un {self.__class__.__name__}")
 
+    # ! da eliminare
     def has_free_space(self, obj: object):
         """"
         Definisce se obj può essere aggiunto al set, utile per gestire
@@ -197,10 +209,10 @@ class Set_of_Cards():
     def how_many_add(self, number) -> int:
         """
         definisce se posso aggiungere delle carte al mio set,
-        nel caso ritorna il numero massimo.
+        in caso contrario ritorna il numero massimo.
         """
         if number > 0:
-            free_space = self.limit - len(self) # 7 -5 -4 -> space = -2
+            free_space = self.limit - len(self)
             if self.draw_logic == 1 or free_space >= number or self.limit < 0:
                 return number
             elif self.draw_logic == 0:
@@ -213,9 +225,9 @@ class Set_of_Cards():
             raise ValueError("Non puoi aggiungere un numero negativo di carte")
 
 
-    def get_cards(self, number: int, mode):
+    def get_cards(self, number: int, mode = None):
         """
-        Recupera carte dal set di carte.
+        Recupera una copia delle carte dal set di carte.
 
         number
             numero di carte da pescare.
@@ -224,20 +236,29 @@ class Set_of_Cards():
             0 in maniera randomica
         """
         if 0 < number <= len(self):
-            # ? aggiungere controllo se ho una sola carta
-            #card2draw = Set_of_Cards([])
-            if mode == 1:
-                card2draw = Set_of_Cards(self.cards[:number])
+            if mode == None:
+                mode = self.remove_mode
 
-            elif mode == 0:
-                card2draw = Set_of_Cards(random.sample(self.cards, number))
-            
-            elif mode == -1:
-                card2draw = Set_of_Cards(self.cards[-number:])
-            
+            if number > 1:
+                if mode == 1:
+                    card2draw = Set_of_Cards(self.cards[:number])
+
+                elif mode == 0:
+                    card2draw = Set_of_Cards(random.sample(self.cards, number))
+                
+                elif mode == -1:
+                    card2draw = Set_of_Cards(self.cards[-number:])
+                
+                else:
+                    raise TypeError(mode, "Modalità selezionata non gestita")
+                return card2draw
             else:
-                raise TypeError(mode, "Modalità selezionata non gestita")
-            return card2draw
+                if mode == 1:
+                    card2draw = self[0]
+                elif mode == 0:
+                    card2draw = self[random.randint(0, len(self) -1)]
+                else:
+                    card2draw = self[-1]
         else:
             if number > 0:
                 raise ValueError(len(self), "Vuoi più carte di quante ne hai")
@@ -252,27 +273,40 @@ class Set_of_Cards():
             numero di carte da pescare. default 1
         mode
             modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
-            0 in maniera randomica. default 1
+            0 in maniera randomica. default 'None'
+            Nota: sovrascrive le logiche se indicata
         """
         drawable_card = self.how_many_add(number)
         
         if drawable_card > 0:
             if mode == None:
-                mode = target.default_mode
+                remove_mode = target.remove_mode
+            else:
+                remove_mode = mode
             try:
-                card2draw = target.get_cards(drawable_card, mode)
+                card2draw = target.get_cards(drawable_card, remove_mode)
             except ValueError as e:
-                drawable_card = e.args[0] # pesco fino al massimo
-                card2draw = target.get_cards(drawable_card, mode)
+                drawable_card = e.args[0]
+                card2draw = target.get_cards(drawable_card, remove_mode)
                 print("Pesco fino a consumare il target")
             
+            # ? fare una funzione che gira il set di carte
+            # * adesso si può scrivere anche: target = targhet[::-1]
+            if mode != self.add_mode and self.add_mode == 1:
+                self.cards = self.cards[::-1]
+                print("override the draw")
             self += card2draw
-            if mode == -1:
+
+            if mode != self.add_mode and self.add_mode == 1:
+                self.cards = self.cards[::-1]
+
+            # ? Considerare se inserirlo nella sub 
+            if remove_mode == -1:
                 target.cards = target.cards[::-1]
 
             target -= card2draw
             
-            if mode == -1:
+            if remove_mode == -1:
                 target.cards = target.cards[::-1]
 
 
@@ -299,6 +333,9 @@ class Set_of_Cards():
         
     def clear(self):
         self.cards.clear()
+    
+    def revert(self):
+        return self[::-1] # ? fare una copia
 
 
 class CardStack(Set_of_Cards):
@@ -319,8 +356,10 @@ class CardStack(Set_of_Cards):
             ignorando il limite, questo implica che deve ci dovrà essere
             un controllo dopo. -1 non pescare se superi il limite.
         """
-        super().__init__(cards, limit, draw_logic)
+        super().__init__(cards, limit, draw_logic, add_mode=1, remove_mode=1)
 
+    def same_type(self):
+        return CardStack([], self.limit, self.draw_logic)
 
     def __add__(self, obj: object):
         """
@@ -350,9 +389,9 @@ class CardStack(Set_of_Cards):
             modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
             0 in maniera randomica. default 1
         """
-        return super().draw(target, number, mode=1)
+        return super().draw(target, number)
 
-
+# ! Da rifare Hand
 class Hand(Set_of_Cards): # probabilmente gestita da gioco
     def __init__(self, cards: list = [],
                  hand_limit: int = -1,
@@ -375,7 +414,7 @@ class CardQueue(Set_of_Cards):
     """Queue of Cards, make your queue"""
     kind = 2
 
-    def __init__(self, cards: list = [], limit = -1, draw_logic = 1) -> None:
+    def __init__(self, cards: list = [], limit = -1, draw_logic = 1, default_mode = 0) -> None:
         """
         Crea una 'queue' set of cards.
         cards
@@ -389,8 +428,11 @@ class CardQueue(Set_of_Cards):
             ignorando il limite, questo implica che deve ci dovrà essere
             un controllo dopo. -1 non pescare se superi il limite.
         """
-        super().__init__(cards, limit)
+        super().__init__(cards, limit, draw_logic,
+                         add_mode=-1, remove_mode=1)
 
+    def same_type(self):
+        return CardQueue([], self.limit, self.draw_logic, self.default_mode)
 
     def draw(self, target, number: int = 1):
         """
@@ -403,7 +445,7 @@ class CardQueue(Set_of_Cards):
             modalità di pesca: 1 dal primo elemento, -1 dall'ultimo,
             0 in maniera randomica. default 1
         """
-        return super().draw(target, number, mode=1)
+        return super().draw(target, number)
 
 
 if __name__ == "__main__":
@@ -411,6 +453,8 @@ if __name__ == "__main__":
     c2 = my_card.FrenchCard(4, 1)
     c3 = my_card.FrenchCard(7, 3)
     c4 = my_card.FrenchCard(12, 0)
+    c5 = my_card.FrenchCard(8, 2)
+    c6 = my_card.HieroglypKhepri(4, 4, 3)
 
     s = Set_of_Cards([c2, c1])
     h = Set_of_Cards([c1, c2, c3], limit=7, draw_logic=1)
@@ -418,13 +462,17 @@ if __name__ == "__main__":
     q = CardQueue([c4, c3, c1, c4, c2, c2])
 
     print(f"h:{h}")
-    print(f"p:{q}")
+    print(f"q:{q}")
     print(f"s:{s}")
-    q = q + h + s
+    p = p +q + h + s
+    s[1] = c5
+    print()
     print(f"h:{h}")
     print(f"s:{s}")
-    print(f"p:{q}")
-    q = q + s + c4
+    print(f"q:{q}")
+    p = p + s + c4
+    h[2] = c6
+    print()
     print(f"h:{h}")
     print(f"q:{q}")
     print(f"s:{s}")
@@ -434,16 +482,14 @@ if __name__ == "__main__":
     print(f"q: {q}")
     print(f"x: {x}")
     print()
-    x.draw(q, 3, -1)
+    x.draw(p, 3)
     print(f"q: {q}")
     print(f"x: {x}")
-    x.draw(q, 5, 0)
+    x.draw(p, 5, 0)
     print()
     print(f"q: {q}")
     print(f"x: {x}")
-    x.draw(q, 2, 1)
+    x.draw(p, 2)
     print()
     print(f"q: {q}")
     print(f"x: {x}")
-
-    print(q[::-1])
