@@ -20,6 +20,9 @@ class Deck:
     def __str__(self) -> str:
         return str(self.pile) + "~~~" + str(self.graveyard)
     
+    def __len__(self):
+        return len(self.pile)
+    
 
     def shuffle(self, full = False):
         """
@@ -34,8 +37,8 @@ class Deck:
         random.shuffle(self.pile)
         return self
 
-    # TODO Modifica il metodo togliendo il default
-    def draw(self, number = 1, shuffle_when_empty=False):
+    # ? mettere un add mode????
+    def draw(self, number = 1, shuffle_when_empty = False):
         """
         Funzione che pesca carte dalla cima del mazzo.
         number
@@ -45,13 +48,26 @@ class Deck:
             gli scarti formando una nuova pila degli scarti e continua
             a pescare.
         """
-        if shuffle_when_empty and (cards_left := len(self.pile) - number) < 0:
-            card_drawed = self.pile.take(abs(cards_left))
-            self.shuffle(full=True)
-            card_drawed += self.pile.take(number + cards_left)
+        if number > 0:
+            cards_left = 0
+            if number > len(self):
+                cards_left = number - len(self)
+                number = len(self)
+            card_drawed = sets.Set_of_Cards([]) # ? mettere un valore di add logic
+            card_drawed.draw(self.pile, number)
+            if shuffle_when_empty and len(self) == 0: # Non contemplo la possibilità in cui pesco più di tutto il mezzo e anche gli scarti
+                if len(self.graveyard) > 0: # ! forse va
+                    self.shuffle(True)
+                    card_drawed += self.draw(cards_left, shuffle_when_empty)
+                else:
+                    raise ValueError(cards_left, "Ma sei stronzo a voler pescare tutto il mondo")
+            elif not shuffle_when_empty and len(self) == 0:
+                print(f"Hai finito il mazzo, dovresti pescare ancora: {cards_left} carte")
+            
             return card_drawed
         else:
-            return self.pile.take(number)
+            raise ValueError("Solo numeri positivi")
+
     
     def add_graveyard(self, cards: sets.Set_of_Cards | my_card.Card):
         """
@@ -157,13 +173,13 @@ if __name__ == "__main__":
     prova = PokerDeck()
     print(prova)
     prova.shuffle()
-    t = prova.draw(20)
+    t = prova.draw(20, True)
     prova.add_graveyard(t)
     print(prova)
-    t = prova.draw(20)
+    t = prova.draw(20, True)
     prova.add_graveyard(t)
     print(prova)
-    t = prova.shuffle().draw(20, True)
-    print(f"\n\n{t}")
+    t = prova.draw(20, True)
+    print(f"\nHo una mano di {len(t)} ed è:\n{t}")
     prova.add_graveyard(t)
     print(prova)
