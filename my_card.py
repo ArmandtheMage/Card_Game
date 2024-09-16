@@ -1,3 +1,6 @@
+import pyrule
+
+
 class Card:
     def __init__(self, name:str) -> None:
         self.name = name
@@ -21,7 +24,7 @@ class Card:
         return Card(name)
     
 
-class FrenchCard(Card):
+class FrenchCard(Card, pyrule.PokerRules):
     """
     Carte Francesi, comunemente utilizzate per poker, burraco, etc
     """
@@ -31,8 +34,9 @@ class FrenchCard(Card):
     SUITS = {}
     for elem in zip(SUITS_REFERENCE, SUITS_UNICODE_SIMBOL):
         SUITS.update({elem[0] : elem[1]})
-
+    
     CARD_VALUES = list(range(2, 11)) + ['Jack', 'Queen', 'King', 'Ace']
+
     
     # ! Jolly hanno valore -1
     WILD_CARD_VALUE = "Jolly"
@@ -108,11 +112,19 @@ if __name__ == "__main__":
     card = FrenchCard(2, 2)
     c1 = FrenchCard(2, 2)
     c2 = FrenchCard(-1, '*')
-    print(card)
-    print(c1)
+    print(id(card.CARD_SUITS_SIMBOL))
+    print(id(c1))
     print(c1 == card)
     print(c1 == c2)
     #c1 = CardKhepri(2, 'P', 4)
     #c2 = CardKhepri(3, 'P', 4)
-    print(len(FrenchCard.SUITS))
+    c3 = FrenchCard(0, 3)
+    c4 = FrenchCard(0, 1)
+    x = [c1, c3, c4]
+    for card in x:
+        print(card)
+    x.sort(key=lambda z: z.value)
 
+    print("###################")
+    for card in x:
+        print(card)

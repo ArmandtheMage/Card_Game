@@ -1,7 +1,8 @@
 """Definisce i set di carte in modo che possano essere gestiti"""
 import random
 import my_card
-#import stackcard as sc
+import pyrule
+
 
 TYPES_OF_SETS = ["free", "stack", "queue"]
 
@@ -251,7 +252,7 @@ class Set_of_Cards():
                 
                 else:
                     raise TypeError(mode, "Modalità selezionata non gestita")
-                return card2draw
+
             else:
                 if mode == 1:
                     card2draw = self[0]
@@ -259,9 +260,12 @@ class Set_of_Cards():
                     card2draw = self[random.randint(0, len(self) -1)]
                 else:
                     card2draw = self[-1]
+
         else:
             if number > 0:
                 raise ValueError(len(self), "Vuoi più carte di quante ne hai")
+        
+        return card2draw
             
 
     def draw(self, target, number: int = 1, mode = None):
@@ -493,3 +497,19 @@ if __name__ == "__main__":
     print()
     print(f"q: {q}")
     print(f"x: {x}")
+    counts = []
+    for i in range(5):
+        counts.append(x.cards.count(x.cards[i]))
+    
+    print(counts)
+
+    from itertools import combinations
+
+    list_comb = list(combinations(q, 5))
+
+    for comb in list_comb:
+        z = []
+        #for card in comb:
+        #    x.append(card)
+        [z.append(poss) for poss in comb]
+        print(Set_of_Cards(z))
