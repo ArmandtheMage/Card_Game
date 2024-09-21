@@ -47,9 +47,8 @@ class PokerRules(Rule):
 
             values = [element for _, element, __ in sorted_values]
 
-
             if sorted_values[0][0] == 4:
-                score = [7, sorted_values[0][1]]
+                score = [7, sorted_values[0][1], sorted_values[-1][1]]
                 #print(f"Poker di {sorted_values[0][1]} -> punteggio {score[0]}")
 
             elif sorted_values[0][0] == 3:
@@ -58,32 +57,35 @@ class PokerRules(Rule):
                 #    print(f"Full di {sorted_values[0][1]} e {sorted_values[-1][1]} -> punteggio {score[0]}")
                 
                 else:
-                    score = [3, sorted_values[0][1]]
+                    score = [3, sorted_values[0][1], sorted_values[-2][1], sorted_values[-1][1]]
                 #    print(f"Tris di {sorted_values[0][1]} -> punteggio {score[0]}")
 
             elif sorted_values[0][0] == 2:
                 if sorted_values[2][0] == 2:
-                    score = [2, sorted_values[0][1], sorted_values[2][1]]
+                    score = [2, sorted_values[0][1], sorted_values[2][1], sorted_values[-1][1]]
                 #    print(f"Doppia Coppia di {sorted_values[0][1]} e {sorted_values[2][1]} -> punteggio {score[0]}")
                     
                 else:
-                    score = [1, sorted_values[0][1]]
+                    score = [1, sorted_values[0][1], sorted_values[2][1], sorted_values[3][1], sorted_values[4][1]]
                 #    print(f"Coppia di {PokerRules.CARD_VALUES[score[1]]} -> punteggio {score[0]}: da {sorted_values[0][2]} e {sorted_values[1][2]}")
 
             elif PokerRules.check_sequence(values):
                 if is_flush:
-                    score = [8]
+                    score = [8] + values
                 #    print(f"Scala Reale -> punteggio {score[0]}")
                     
                 else:
-                    score = [4, sorted_values[0][1]]
+                    #score = [4, sorted_values[0][1], sorted_values[1][1], sorted_values[2][1], sorted_values[3][1], sorted_values[4][1]]
                 #    print(f"Scala -> punteggio {score[0]}")
+                    score = [4] + values
 
             elif is_flush:
-                score = [5, hand[0].suit]
+                #score = [5, sorted_values[0][1], sorted_values[1][1], sorted_values[2][1], sorted_values[3][1], sorted_values[4][1]]
+                score = [5] + values
                 #print(f"Colore -> punteggio {score[0]}")
             else:
-                score = [0, sorted_values[0][1]]
+                #score = [0, sorted_values[0][1], sorted_values[1][1], sorted_values[2][1], sorted_values[3][1], sorted_values[4][1]]
+                score =  [0] + values
                 #print(f"Spera nella carta alta {score[1]} -> punteggio {score[0]}")
             
             
@@ -93,20 +95,41 @@ class PokerRules(Rule):
         return score
     
     @staticmethod
+    #def check_sequence(values):
+    #    values.sort()
+    #    i = 1
+    #    straigth_value = values[0]
+    #    while i < len(values):
+    #        straigth_value += 1
+    #        if values[i] == straigth_value:
+    #            i += 1
+    #        elif values[i] == len(PokerRules.CARD_VALUES) -1 and values[0] == 0:
+    #            i += 1
+    #        else:
+    #            return False
+    #    return True
+    
+    @staticmethod
     def check_sequence(values):
-        values.sort()
+        if values[0] == 12:
+            values.pop(0)
+            values.append(-1)
+
         i = 1
+        is_straight = True        
         straigth_value = values[0]
-        while i < len(values):
-            straigth_value += 1
+
+        while i < len(values) and is_straight:
+            straigth_value -= 1
             if values[i] == straigth_value:
                 i += 1
-            elif values[i] == len(PokerRules.CARD_VALUES) -1 and values[0] == 0:
-                i += 1
             else:
-                return False
-        return True
-        
+                is_straight = False
+                if -1 in values:
+                    values.remove(-1)
+                    values.insert(0, 12)
+
+        return is_straight
     
 
 if __name__ == "__main__":
